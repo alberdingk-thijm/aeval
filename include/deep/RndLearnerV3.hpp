@@ -996,7 +996,7 @@ namespace ufo
         assignPrioritiesForLearned();
         if (checkAllLemmas())
         {
-          outs () << "Success after bootstrapping\n";
+          outs () << "Success after bootstrapping (round 0)\n";
           return true;
         }
       }
@@ -1022,7 +1022,7 @@ namespace ufo
               generalizeArrInvars(sf);
               if (checkAllLemmas())
               {
-                outs () << "Success after bootstrapping\n";
+                outs () << "Success after bootstrapping (round 1)\n";
                 return true;
               }
             }
