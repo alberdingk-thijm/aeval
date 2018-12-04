@@ -495,7 +495,7 @@ namespace ufo
           if (!u.isSat(cand->last()->left())) cand = NULL;
         }
         if (cand == NULL) continue;
-//        outs () << " - - - sampled cand: #" << i << ": " << *cand << "\n";
+        outs () << " - - - sampled cand: #" << i << ": " << *cand << "\n";
 
         if (!addCandidate(invNum, cand)) continue;
         if (checkCand(invNum))
@@ -568,6 +568,7 @@ namespace ufo
       return true;
     }
 
+    // Check if any candidate has a FORALL quantifier.
     bool hasQuantifiedCands(map<int, ExprVector>& cands)
     {
       for (auto & a : cands)
@@ -596,11 +597,40 @@ namespace ufo
           bool res2 = true;
           int ind = getVarIndex(hr.dstRelation, decls);
           Expr model = getModel(hr.dstVars);
-          if (model == NULL || hasQuantifiedCands(candidatesTmp))
+          if (model == NULL)
           {
             // something went wrong with z3. do aggressive weakening (TODO: try bruteforce):
             candidatesTmp[ind].clear();
             res2 = false;
+          }
+          else if (hasQuantifiedCands(candidatesTmp))
+          {
+            // TODO(tim):
+            // Check which candidates don't work with the model
+            ExprVector& ev = candidatesTmp[ind];
+            ExprVector invVars;
+            for (auto & a : invarVars[ind]) invVars.push_back(a.second);
+            SamplFactory& sf = sfs[ind].back();
+            generalizeArrInvars(sf);
+
+            for (auto it = ev.begin(); it != ev.end(); )
+            {
+              Expr repl = *it;
+              for (auto & v : invarVars[ind]) repl = replaceAll(repl, v.second, hr.dstVars[v.first]);
+
+              if (!u.isSat(model, repl))
+              {
+                // TODO: isFact case
+                it = ev.erase(it);
+                res2 = false;
+              }
+              else
+              {
+                ++it;
+              }
+            }
+            /* candidatesTmp[ind].clear(); */
+            /* res2 = false; */
           }
           else
           {
@@ -619,7 +649,7 @@ namespace ufo
                 if (hr.isFact)
                 {
                   Expr failedCand = normalizeDisj(*it, invVars);
-//                outs () << "failed cand for " << *hr.dstRelation << ": " << *failedCand << "\n";
+                  outs () << "failed cand for " << *hr.dstRelation << ": " << *failedCand << "\n";
                   Sampl& s = sf.exprToSampl(failedCand);
                   sf.assignPrioritiesForFailed();
                 }
@@ -966,7 +996,7 @@ namespace ufo
         assignPrioritiesForLearned();
         if (checkAllLemmas())
         {
-          outs () << "Success after bootstrapping\n";
+          outs () << "Success after bootstrapping (round 0)\n";
           return true;
         }
       }
@@ -983,7 +1013,7 @@ namespace ufo
           {
             checked.clear();
             Expr cand = sf.af.getSimplCand(c);
-//            outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n";
+            outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n";
 
             if (!addCandidate(i, cand)) continue;
             if (checkCand(i))
@@ -992,7 +1022,7 @@ namespace ufo
               generalizeArrInvars(sf);
               if (checkAllLemmas())
               {
-                outs () << "Success after bootstrapping\n";
+                outs () << "Success after bootstrapping (round 1)\n";
                 return true;
               }
             }
@@ -1026,7 +1056,7 @@ namespace ufo
           assignPrioritiesForLearned();
           if (checkAllLemmas())
           {
-            outs () << "Success after bootstrapping\n";
+            outs () << "Success after bootstrapping (round 2)\n";
             return true;
           }
         }
@@ -1107,7 +1137,9 @@ namespace ufo
         }
         m_smt_solver.assertExpr(disjoin(negged, m_efac));
       }
-      return !m_smt_solver.solve ();
+      bool out = !m_smt_solver.solve ();
+      m_smt_solver.toSmtLib(outs());
+      return out;
     }
 
     void initArrayStuff(BndExpl& bnd, int cycleNum, Expr pref)
