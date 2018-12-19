@@ -586,6 +586,7 @@ namespace ufo
       if (!anyProgress(worklist)) return false;
       map<int, ExprVector> candidatesTmp = candidates;
       bool res1 = true;
+      //outs() << "Running Houdini on " << worklist.size() << " rules\n";
       for (auto &h: worklist)
       {
         HornRuleExt& hr = *h;
@@ -603,49 +604,41 @@ namespace ufo
             candidatesTmp[ind].clear();
             res2 = false;
           }
-          else if (hasQuantifiedCands(candidatesTmp))
-          {
-            // TODO(tim):
-            // Check which candidates don't work with the model
-            ExprVector& ev = candidatesTmp[ind];
-            ExprVector invVars;
-            for (auto & a : invarVars[ind]) invVars.push_back(a.second);
-            SamplFactory& sf = sfs[ind].back();
-            generalizeArrInvars(sf);
-
-            for (auto it = ev.begin(); it != ev.end(); )
-            {
-              Expr repl = *it;
-              for (auto & v : invarVars[ind]) repl = replaceAll(repl, v.second, hr.dstVars[v.first]);
-
-              if (!u.isSat(model, repl))
-              {
-                // TODO: isFact case
-                it = ev.erase(it);
-                res2 = false;
-              }
-              else
-              {
-                ++it;
-              }
-            }
-            /* candidatesTmp[ind].clear(); */
-            /* res2 = false; */
-          }
           else
           {
+            outs() << "Model: " << *model << "\n";
+            if (hasQuantifiedCands(candidatesTmp))
+            {
+              outs() << "Quantified candidates found\n";
+            }
             ExprVector& ev = candidatesTmp[ind];
             ExprVector invVars;
             for (auto & a : invarVars[ind]) invVars.push_back(a.second);
             SamplFactory& sf = sfs[ind].back();
 
+            outs() << "ev (initial): " << ev.size() << " elements\n";
             for (auto it = ev.begin(); it != ev.end(); )
             {
               Expr repl = *it;
               for (auto & v : invarVars[ind]) repl = replaceAll(repl, v.second, hr.dstVars[v.first]);
+              // parse model, collect set of expressions, call replaceAll(repl, from, to) on each part
+              // a model is always of the form x_1 = v_1 && x_2 = v_2 && ...
+              for (auto arg = model->args_begin(); arg != model->args_end(); ++arg)
+              {
+                Expr eq = *arg;
+                repl = replaceAll(repl, eq->left(), eq->right());
+              }
+              outs() << "Parsed repl: " << *repl << "\n";
+              // step 1: print out and exit
+              // take quantifiers out by substituting in concrete array
+              // next step: break apart finite
 
+              // TODO(tim): slightly more efficient to replace model values in repl
+              // Check if model is UNSAT given repl
+              // Remove all UNSAT repls
               if (!u.isSat(model, repl))
               {
+                //outs() << "Found an unsat candidate: " << *repl << "\n";
                 if (hr.isFact)
                 {
                   Expr failedCand = normalizeDisj(*it, invVars);
@@ -661,10 +654,12 @@ namespace ufo
                 ++it;
               }
             }
+            outs() << "ev (final): " << ev.size() << " elements\n";
           }
 
           if (recur && !res2)
           {
+            //outs() << "Breaking loop early\n";
             res1 = false;
             break;
           }
@@ -989,11 +984,28 @@ namespace ufo
 
     bool bootstrap()
     {
+      // Add array candidates
+      /* if (ruleManager.hasArrays) */
+      /* { */
+      /*   for (auto & dcl: ruleManager.wtoDecls) */
+      /*   { */
+      /*     int i = getVarIndex(dcl, decls); */
+      /*     SamplFactory& sf = sfs[i].back(); */
+      /*     for (auto & c : arrCands[i]) */
+      /*     { */
+      /*       Expr cand = sf.af.getSimplCand(c); */
+      /*       addCandidate(i, cand); */
+      /*     } */
+      /*   } */
+      /* } */
+
       filterUnsat();
+      outs() << "Filtered UNSAT candidates\n";
 
       if (multiHoudini(ruleManager.wtoCHCs))
       {
         assignPrioritiesForLearned();
+        outs() << "Checking lemmas (round 0)\n";
         if (checkAllLemmas())
         {
           outs () << "Success after bootstrapping (round 0)\n";
@@ -1020,6 +1032,7 @@ namespace ufo
             {
               assignPrioritiesForLearned();
               generalizeArrInvars(sf);
+              outs() << "Checking lemmas (round 1)\n";
               if (checkAllLemmas())
               {
                 outs () << "Success after bootstrapping (round 1)\n";
@@ -1054,6 +1067,7 @@ namespace ufo
         if (multiHoudini(ruleManager.wtoCHCs))
         {
           assignPrioritiesForLearned();
+          outs() << "Checking lemmas (round 2)\n";
           if (checkAllLemmas())
           {
             outs () << "Success after bootstrapping (round 2)\n";
@@ -1093,6 +1107,9 @@ namespace ufo
       return true;
     }
 
+    // Check if (conjunction of cand' in Cands, cand'(V) and Tr(V, V') does not imply 
+    // the conjunction of cand' in Cands, cand'(V')
+    // Return true if UNSAT, false if SAT
     bool checkCHC (HornRuleExt& hr, map<int, ExprVector>& annotations)
     {
       m_smt_solver.reset();
@@ -1138,7 +1155,8 @@ namespace ufo
         m_smt_solver.assertExpr(disjoin(negged, m_efac));
       }
       bool out = !m_smt_solver.solve ();
-      m_smt_solver.toSmtLib(outs());
+      /* m_smt_solver.toSmtLib(outs()); */
+      outs() << (!out ? "SAT" : "UNSAT" ) << "\n";
       return out;
     }
 
