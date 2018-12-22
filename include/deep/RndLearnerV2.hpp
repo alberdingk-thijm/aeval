@@ -26,7 +26,7 @@ namespace ufo
     RndLearnerV2 (ExprFactory &efac, EZ3 &z3, CHCs& r, bool freqs, bool aggp) :
       RndLearner (efac, z3, r, /*k-induction*/ false, freqs, /*epsilon*/ true, aggp){}
 
-    Expr getModel(ExprVector& vars)
+    template <typename T> Expr getModel(T& vars)
     {
       ExprVector eqs;
       ZSolver<EZ3>::Model m = m_smt_solver.getModel();

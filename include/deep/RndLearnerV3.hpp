@@ -628,15 +628,32 @@ namespace ufo
                 Expr eq = *arg;
                 repl = replaceAll(repl, eq->left(), eq->right());
               }
-              outs() << "Parsed repl: " << *repl << "\n";
-              // step 1: print out and exit
-              // take quantifiers out by substituting in concrete array
-              // next step: break apart finite
+              // If quantified, check the values
+              if (isOpX<FORALL>(repl)) {
+                outs() << "Parsed repl: " << *repl << "\n";
+                // Assume that structure is FORALL (INT) (restrictions) -> (state)
+                // TODO(tim): check if isSat for __FH_arr_it
+                if (u.isSat(repl)) {
+                  // get the var representing the array iterator
+                  ExprSet arrVars;
+                  getQuantifiedVars(repl, arrVars);
+                  Expr arr_model = getModel(arrVars);
+                  Expr consequent = (repl->right())->right();
+                  for (auto arg = arr_model->args_begin(); arg != arr_model->args_end(); ++arg)
+                  {
+                    Expr arrEq = *arg;
+                    consequent = replaceAll(consequent, arrEq->left(), arrEq->right());
+                  }
+                  // Change the value we check to just be the quantifier-free consequent
+                  repl = consequent;
+                  outs() << "Quantifier-free consequent: " << *repl << "\n";
+                }
+                // next step: break apart finite
+              }
 
-              // TODO(tim): slightly more efficient to replace model values in repl
               // Check if model is UNSAT given repl
               // Remove all UNSAT repls
-              if (!u.isSat(model, repl))
+              if (!u.isSat(repl))
               {
                 //outs() << "Found an unsat candidate: " << *repl << "\n";
                 if (hr.isFact)
