@@ -36,17 +36,6 @@ namespace ufo
       return conjoin (eqs, efac);
     }
 
-/*     Expr getModel(ExprVector& vars) */
-/*     { */
-/*       ExprVector eqs; */
-/*       ZSolver<EZ3>::Model m = smt.getModel(); */
-/*       for (auto & v : vars) if (v != m.eval(v)) */
-/*       { */
-/*         eqs.push_back(mk<EQ>(v, m.eval(v))); */
-/*       } */
-/*       return conjoin (eqs, efac); */
-/*     } */
-
     /**
      * SMT-check
      */

@@ -606,7 +606,7 @@ namespace ufo
           }
           else
           {
-            outs() << "Model: " << *model << "\n";
+            /* outs() << "Model: " << *model << "\n"; */
             if (hasQuantifiedCands(candidatesTmp))
             {
               outs() << "Quantified candidates found\n";
@@ -616,7 +616,7 @@ namespace ufo
             for (auto & a : invarVars[ind]) invVars.push_back(a.second);
             SamplFactory& sf = sfs[ind].back();
 
-            outs() << "ev (initial): " << ev.size() << " elements\n";
+            /* outs() << "ev (initial): " << ev.size() << " elements\n"; */
             for (auto it = ev.begin(); it != ev.end(); )
             {
               Expr repl = *it;
@@ -630,27 +630,39 @@ namespace ufo
               }
               // If quantified, check the values
               if (isOpX<FORALL>(repl)) {
-                outs() << "Parsed repl: " << *repl << "\n";
+                /* outs() << "Parsed repl: " << *repl << "\n"; */
                 // Assume that structure is FORALL (INT) (restrictions) -> (state)
+                Expr ground = repl->last();
+                Expr antecedent = ground->left();
+                Expr consequent = ground->right();
+                // TODO(tim): get all possible values of __FH_arr_it that satisfy the antecedent
                 // TODO(tim): check if isSat for __FH_arr_it
-                if (u.isSat(repl)) {
+                ExprSet arrVars;
+                getQuantifiedVars(repl, arrVars);
+                // TODO(tim): the antecedent will restrict what values of _FH_arr_it we need to consider
+                // TODO(tim): try each of those values in the consequent
+                // TODO(tim): if a value returns false, then the expression is false, i.e. UNSAT, and we remove it
+                // This appears to be the same as trying to satisfy the antecedent and falsify the consequent, i.e.
+                // looking for sat for antecedent && !consequent
+                if (u.isSat(antecedent, !consequent)) {
                   // get the var representing the array iterator
-                  ExprSet arrVars;
-                  getQuantifiedVars(repl, arrVars);
-                  Expr arr_model = getModel(arrVars);
-                  Expr consequent = (repl->right())->right();
-                  for (auto arg = arr_model->args_begin(); arg != arr_model->args_end(); ++arg)
-                  {
-                    Expr arrEq = *arg;
-                    consequent = replaceAll(consequent, arrEq->left(), arrEq->right());
-                  }
-                  // Change the value we check to just be the quantifier-free consequent
-                  repl = consequent;
-                  outs() << "Quantifier-free consequent: " << *repl << "\n";
+                  Expr arr_model = u.getModel(arrVars);
+                  /* outs() << "Array model: " << *arr_model << "\n"; */
+                /*   Expr consequent = (repl->last())->right(); */
+                /*   for (auto arg = arr_model->args_begin(); arg != arr_model->args_end(); ++arg) */
+                /*   { */
+                /*     Expr arrEq = *arg; */
+                /*     consequent = replaceAll(consequent, arrEq->left(), arrEq->right()); */
+                /*   } */
+                /*   // Change the value we check to just be the quantifier-free consequent */
+                /*   repl = consequent; */
+                /*   outs() << "Quantifier-free consequent: " << *repl << "\n"; */
+                  it = ev.erase(it);
+                  res2 = false;
                 }
                 // next step: break apart finite
               }
-
+              else
               // Check if model is UNSAT given repl
               // Remove all UNSAT repls
               if (!u.isSat(repl))
@@ -671,7 +683,7 @@ namespace ufo
                 ++it;
               }
             }
-            outs() << "ev (final): " << ev.size() << " elements\n";
+            /* outs() << "ev (final): " << ev.size() << " elements\n"; */
           }
 
           if (recur && !res2)
