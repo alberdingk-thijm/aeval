@@ -9,7 +9,8 @@
 (declare-rel inv ((Array Int Int) (Array Int Int) Int Int))
 (declare-rel fail ())
 
-(rule (inv a b 0 777777))
+; (rule (inv a b 0 777777))
+(rule (inv a b 0 200000))
 
 (rule (=> (and (inv a b i N) (< i N) (= i1 (+ i 1))
     (= (store a i i) a1)

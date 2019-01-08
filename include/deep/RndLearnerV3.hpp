@@ -586,7 +586,6 @@ namespace ufo
       if (!anyProgress(worklist)) return false;
       map<int, ExprVector> candidatesTmp = candidates;
       bool res1 = true;
-      //outs() << "Running Houdini on " << worklist.size() << " rules\n";
       for (auto &h: worklist)
       {
         HornRuleExt& hr = *h;
@@ -607,10 +606,10 @@ namespace ufo
           else
           {
             /* outs() << "Model: " << *model << "\n"; */
-            if (hasQuantifiedCands(candidatesTmp))
-            {
-              outs() << "Quantified candidates found\n";
-            }
+            /* if (hasQuantifiedCands(candidatesTmp)) */
+            /* { */
+            /*   outs() << "Quantified candidates found\n"; */
+            /* } */
             ExprVector& ev = candidatesTmp[ind];
             ExprVector invVars;
             for (auto & a : invarVars[ind]) invVars.push_back(a.second);
@@ -671,7 +670,7 @@ namespace ufo
                 if (hr.isFact)
                 {
                   Expr failedCand = normalizeDisj(*it, invVars);
-                  outs () << "failed cand for " << *hr.dstRelation << ": " << *failedCand << "\n";
+                  /* outs () << "failed cand for " << *hr.dstRelation << ": " << *failedCand << "\n"; */
                   Sampl& s = sf.exprToSampl(failedCand);
                   sf.assignPrioritiesForFailed();
                 }
@@ -688,7 +687,6 @@ namespace ufo
 
           if (recur && !res2)
           {
-            //outs() << "Breaking loop early\n";
             res1 = false;
             break;
           }
@@ -1029,12 +1027,12 @@ namespace ufo
       /* } */
 
       filterUnsat();
-      outs() << "Filtered UNSAT candidates\n";
+      /* outs() << "Filtered UNSAT candidates\n"; */
 
       if (multiHoudini(ruleManager.wtoCHCs))
       {
         assignPrioritiesForLearned();
-        outs() << "Checking lemmas (round 0)\n";
+        /* outs() << "Checking lemmas (round 0)\n"; */
         if (checkAllLemmas())
         {
           outs () << "Success after bootstrapping (round 0)\n";
@@ -1054,14 +1052,14 @@ namespace ufo
           {
             checked.clear();
             Expr cand = sf.af.getSimplCand(c);
-            outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n";
+            /* outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n"; */
 
             if (!addCandidate(i, cand)) continue;
             if (checkCand(i))
             {
               assignPrioritiesForLearned();
               generalizeArrInvars(sf);
-              outs() << "Checking lemmas (round 1)\n";
+              /* outs() << "Checking lemmas (round 1)\n"; */
               if (checkAllLemmas())
               {
                 outs () << "Success after bootstrapping (round 1)\n";
@@ -1096,7 +1094,7 @@ namespace ufo
         if (multiHoudini(ruleManager.wtoCHCs))
         {
           assignPrioritiesForLearned();
-          outs() << "Checking lemmas (round 2)\n";
+          /* outs() << "Checking lemmas (round 2)\n"; */
           if (checkAllLemmas())
           {
             outs () << "Success after bootstrapping (round 2)\n";
@@ -1160,6 +1158,7 @@ namespace ufo
             {
               varz.push_back(bind::fapp(a->arg(i)));
             }
+            /* outs() << "Annotation: " << *a << "\n"; */
             m_smt_solver.assertForallExpr(varz, a->last());
           }
           else
@@ -1183,10 +1182,10 @@ namespace ufo
         }
         m_smt_solver.assertExpr(disjoin(negged, m_efac));
       }
-      bool out = !m_smt_solver.solve ();
       /* m_smt_solver.toSmtLib(outs()); */
-      outs() << (!out ? "SAT" : "UNSAT" ) << "\n";
-      return out;
+      bool out = m_smt_solver.solve ();
+      /* outs() << (out ? "SAT" : "UNSAT" ) << "\n"; */
+      return !out;
     }
 
     void initArrayStuff(BndExpl& bnd, int cycleNum, Expr pref)
