@@ -301,7 +301,6 @@ namespace ufo
       Expr rel = decls[invNum];
       if (!checkInit(invNum, rel)) return false;
       if (!checkInductiveness(rel)) return false;
-
       return propagate(invNum, conjoin(candidates[invNum], m_efac), false);
     }
 
@@ -495,7 +494,7 @@ namespace ufo
           if (!u.isSat(cand->last()->left())) cand = NULL;
         }
         if (cand == NULL) continue;
-        outs () << " - - - sampled cand: #" << i << ": " << *cand << "\n";
+        /* outs () << " - - - sampled cand: #" << i << ": " << *cand << "\n"; */
 
         if (!addCandidate(invNum, cand)) continue;
         if (checkCand(invNum))
@@ -606,22 +605,15 @@ namespace ufo
           else
           {
             /* outs() << "Model: " << *model << "\n"; */
-            /* if (hasQuantifiedCands(candidatesTmp)) */
-            /* { */
-            /*   outs() << "Quantified candidates found\n"; */
-            /* } */
             ExprVector& ev = candidatesTmp[ind];
             ExprVector invVars;
             for (auto & a : invarVars[ind]) invVars.push_back(a.second);
             SamplFactory& sf = sfs[ind].back();
 
-            /* outs() << "ev (initial): " << ev.size() << " elements\n"; */
             for (auto it = ev.begin(); it != ev.end(); )
             {
               Expr repl = *it;
               for (auto & v : invarVars[ind]) repl = replaceAll(repl, v.second, hr.dstVars[v.first]);
-              // parse model, collect set of expressions, call replaceAll(repl, from, to) on each part
-              // a model is always of the form x_1 = v_1 && x_2 = v_2 && ...
               for (auto arg = model->args_begin(); arg != model->args_end(); ++arg)
               {
                 Expr eq = *arg;
@@ -629,7 +621,7 @@ namespace ufo
               }
               // If quantified, check the values
               if (isOpX<FORALL>(repl)) {
-                /* outs() << "Parsed repl: " << *repl << "\n"; */
+                outs() << "Parsed repl: " << *repl << "\n";
                 // Assume that structure is FORALL (INT) (restrictions) -> (state)
                 Expr ground = repl->last();
                 Expr antecedent = ground->left();
@@ -638,15 +630,14 @@ namespace ufo
                 // TODO(tim): check if isSat for __FH_arr_it
                 ExprSet arrVars;
                 getQuantifiedVars(repl, arrVars);
-                // TODO(tim): the antecedent will restrict what values of _FH_arr_it we need to consider
-                // TODO(tim): try each of those values in the consequent
-                // TODO(tim): if a value returns false, then the expression is false, i.e. UNSAT, and we remove it
+                // Intuition: the antecedent will restrict what values of _FH_arr_it we need to consider:
+                // try each of those values in the consequent.
+                // If a value returns false, then the expression is false, i.e. UNSAT, and we remove it.
                 // This appears to be the same as trying to satisfy the antecedent and falsify the consequent, i.e.
                 // looking for sat for antecedent && !consequent
                 if (u.isSat(antecedent, !consequent)) {
                   // get the var representing the array iterator
                   Expr arr_model = u.getModel(arrVars);
-                  /* outs() << "Array model: " << *arr_model << "\n"; */
                 /*   Expr consequent = (repl->last())->right(); */
                 /*   for (auto arg = arr_model->args_begin(); arg != arr_model->args_end(); ++arg) */
                 /*   { */
@@ -655,11 +646,11 @@ namespace ufo
                 /*   } */
                 /*   // Change the value we check to just be the quantifier-free consequent */
                 /*   repl = consequent; */
-                /*   outs() << "Quantifier-free consequent: " << *repl << "\n"; */
                   it = ev.erase(it);
                   res2 = false;
+                } else {
+                  ++it;
                 }
-                // next step: break apart finite
               }
               else
               // Check if model is UNSAT given repl
@@ -682,7 +673,6 @@ namespace ufo
                 ++it;
               }
             }
-            /* outs() << "ev (final): " << ev.size() << " elements\n"; */
           }
 
           if (recur && !res2)
@@ -1011,28 +1001,13 @@ namespace ufo
 
     bool bootstrap()
     {
-      // Add array candidates
-      /* if (ruleManager.hasArrays) */
-      /* { */
-      /*   for (auto & dcl: ruleManager.wtoDecls) */
-      /*   { */
-      /*     int i = getVarIndex(dcl, decls); */
-      /*     SamplFactory& sf = sfs[i].back(); */
-      /*     for (auto & c : arrCands[i]) */
-      /*     { */
-      /*       Expr cand = sf.af.getSimplCand(c); */
-      /*       addCandidate(i, cand); */
-      /*     } */
-      /*   } */
-      /* } */
-
       filterUnsat();
       /* outs() << "Filtered UNSAT candidates\n"; */
 
       if (multiHoudini(ruleManager.wtoCHCs))
       {
         assignPrioritiesForLearned();
-        /* outs() << "Checking lemmas (round 0)\n"; */
+        outs() << "Checking lemmas (round 0)\n";
         if (checkAllLemmas())
         {
           outs () << "Success after bootstrapping (round 0)\n";
@@ -1052,14 +1027,14 @@ namespace ufo
           {
             checked.clear();
             Expr cand = sf.af.getSimplCand(c);
-            /* outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n"; */
+            outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n";
 
             if (!addCandidate(i, cand)) continue;
             if (checkCand(i))
             {
               assignPrioritiesForLearned();
               generalizeArrInvars(sf);
-              /* outs() << "Checking lemmas (round 1)\n"; */
+              outs() << "Checking lemmas (round 1)\n";
               if (checkAllLemmas())
               {
                 outs () << "Success after bootstrapping (round 1)\n";
@@ -1094,7 +1069,7 @@ namespace ufo
         if (multiHoudini(ruleManager.wtoCHCs))
         {
           assignPrioritiesForLearned();
-          /* outs() << "Checking lemmas (round 2)\n"; */
+          outs() << "Checking lemmas (round 2)\n";
           if (checkAllLemmas())
           {
             outs () << "Success after bootstrapping (round 2)\n";
@@ -1182,9 +1157,9 @@ namespace ufo
         }
         m_smt_solver.assertExpr(disjoin(negged, m_efac));
       }
-      /* m_smt_solver.toSmtLib(outs()); */
+      m_smt_solver.toSmtLib(outs());
       bool out = m_smt_solver.solve ();
-      /* outs() << (out ? "SAT" : "UNSAT" ) << "\n"; */
+      outs() << (out ? "SAT" : "UNSAT" ) << "\n";
       return !out;
     }
 
