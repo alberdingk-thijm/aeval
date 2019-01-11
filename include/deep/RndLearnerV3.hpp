@@ -604,7 +604,6 @@ namespace ufo
           }
           else
           {
-            /* outs() << "Model: " << *model << "\n"; */
             ExprVector& ev = candidatesTmp[ind];
             ExprVector invVars;
             for (auto & a : invarVars[ind]) invVars.push_back(a.second);
@@ -621,23 +620,27 @@ namespace ufo
               }
               // If quantified, check the values
               if (isOpX<FORALL>(repl)) {
-                outs() << "Parsed repl: " << *repl << "\n";
+                /* outs() << "Parsed repl: " << *repl << "\n"; */
                 // Assume that structure is FORALL (INT) (restrictions) -> (state)
                 Expr ground = repl->last();
+                if (!isOpX<IMPL>(ground)) {
+                  // we're not totally sure what to do here
+                  candidatesTmp[ind].clear();
+                  res2 = false;
+                  continue;
+                }
                 Expr antecedent = ground->left();
                 Expr consequent = ground->right();
-                // TODO(tim): get all possible values of __FH_arr_it that satisfy the antecedent
-                // TODO(tim): check if isSat for __FH_arr_it
                 ExprSet arrVars;
                 getQuantifiedVars(repl, arrVars);
                 // Intuition: the antecedent will restrict what values of _FH_arr_it we need to consider:
                 // try each of those values in the consequent.
                 // If a value returns false, then the expression is false, i.e. UNSAT, and we remove it.
                 // This appears to be the same as trying to satisfy the antecedent and falsify the consequent, i.e.
-                // looking for sat for antecedent && !consequent
-                if (u.isSat(antecedent, !consequent)) {
+                // looking for sat for antecedent && !consequent.
+                if (u.isSat(mk<NEG>(ground))) {
                   // get the var representing the array iterator
-                  Expr arr_model = u.getModel(arrVars);
+                  /* Expr arr_model = u.getModel(arrVars); */
                 /*   Expr consequent = (repl->last())->right(); */
                 /*   for (auto arg = arr_model->args_begin(); arg != arr_model->args_end(); ++arg) */
                 /*   { */
@@ -657,7 +660,6 @@ namespace ufo
               // Remove all UNSAT repls
               if (!u.isSat(repl))
               {
-                //outs() << "Found an unsat candidate: " << *repl << "\n";
                 if (hr.isFact)
                 {
                   Expr failedCand = normalizeDisj(*it, invVars);
@@ -1007,7 +1009,7 @@ namespace ufo
       if (multiHoudini(ruleManager.wtoCHCs))
       {
         assignPrioritiesForLearned();
-        outs() << "Checking lemmas (round 0)\n";
+        /* outs() << "Checking lemmas (round 0)\n"; */
         if (checkAllLemmas())
         {
           outs () << "Success after bootstrapping (round 0)\n";
@@ -1069,7 +1071,7 @@ namespace ufo
         if (multiHoudini(ruleManager.wtoCHCs))
         {
           assignPrioritiesForLearned();
-          outs() << "Checking lemmas (round 2)\n";
+          /* outs() << "Checking lemmas (round 2)\n"; */
           if (checkAllLemmas())
           {
             outs () << "Success after bootstrapping (round 2)\n";
