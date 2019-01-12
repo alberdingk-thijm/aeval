@@ -638,7 +638,7 @@ namespace ufo
                 // If a value returns false, then the expression is false, i.e. UNSAT, and we remove it.
                 // This appears to be the same as trying to satisfy the antecedent and falsify the consequent, i.e.
                 // looking for sat for antecedent && !consequent.
-                if (u.isSat(mk<NEG>(ground))) {
+                if (u.isSat(mkNeg(ground))) {
                   // get the var representing the array iterator
                   /* Expr arr_model = u.getModel(arrVars); */
                 /*   Expr consequent = (repl->last())->right(); */
@@ -1117,6 +1117,7 @@ namespace ufo
     bool checkCHC (HornRuleExt& hr, map<int, ExprVector>& annotations)
     {
       m_smt_solver.reset();
+      outs() << "hr.body: " << *hr.body << "\n";
       m_smt_solver.assertExpr (hr.body);
 
       if (!hr.isFact)
@@ -1128,6 +1129,7 @@ namespace ufo
         for (auto a : lms)
         {
           for (auto & v : invarVars[ind]) a = replaceAll(a, v.second, hr.srcVars[v.first]);
+          outs() << "Annotation: " << *a << "\n";
           if (isOpX<FORALL>(a))
           {
             ExprVector varz;
@@ -1135,7 +1137,6 @@ namespace ufo
             {
               varz.push_back(bind::fapp(a->arg(i)));
             }
-            /* outs() << "Annotation: " << *a << "\n"; */
             m_smt_solver.assertForallExpr(varz, a->last());
           }
           else
@@ -1155,6 +1156,7 @@ namespace ufo
         for (auto a : lms)
         {
           for (auto & v : invarVars[ind]) a = replaceAll(a, v.second, hr.dstVars[v.first]);
+          outs() << "Annotation: " << *a << "\nNegated: " << *mkNeg(a) << "\n";
           negged.insert(mkNeg(a));
         }
         m_smt_solver.assertExpr(disjoin(negged, m_efac));
