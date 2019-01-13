@@ -629,26 +629,23 @@ namespace ufo
                   res2 = false;
                   continue;
                 }
-                Expr antecedent = ground->left();
-                Expr consequent = ground->right();
                 ExprSet arrVars;
                 getQuantifiedVars(repl, arrVars);
                 // Intuition: the antecedent will restrict what values of _FH_arr_it we need to consider:
                 // try each of those values in the consequent.
                 // If a value returns false, then the expression is false, i.e. UNSAT, and we remove it.
                 // This appears to be the same as trying to satisfy the antecedent and falsify the consequent, i.e.
-                // looking for sat for antecedent && !consequent.
+                // looking for sat for !ground
                 if (u.isSat(mkNeg(ground))) {
                   // get the var representing the array iterator
                   /* Expr arr_model = u.getModel(arrVars); */
-                /*   Expr consequent = (repl->last())->right(); */
-                /*   for (auto arg = arr_model->args_begin(); arg != arr_model->args_end(); ++arg) */
-                /*   { */
-                /*     Expr arrEq = *arg; */
-                /*     consequent = replaceAll(consequent, arrEq->left(), arrEq->right()); */
-                /*   } */
-                /*   // Change the value we check to just be the quantifier-free consequent */
-                /*   repl = consequent; */
+                  if (hr.isFact)
+                  {
+                    Expr failedCand = normalizeDisj(*it, invVars);
+                    /* outs () << "failed cand for " << *hr.dstRelation << ": " << *failedCand << "\n"; */
+                    Sampl& s = sf.exprToSampl(failedCand);
+                    sf.assignPrioritiesForFailed();
+                  }
                   it = ev.erase(it);
                   res2 = false;
                 } else {
@@ -1029,14 +1026,14 @@ namespace ufo
           {
             checked.clear();
             Expr cand = sf.af.getSimplCand(c);
-            outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n";
+            /* outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n"; */
 
             if (!addCandidate(i, cand)) continue;
             if (checkCand(i))
             {
               assignPrioritiesForLearned();
               generalizeArrInvars(sf);
-              outs() << "Checking lemmas (round 1)\n";
+              /* outs() << "Checking lemmas (round 1)\n"; */
               if (checkAllLemmas())
               {
                 outs () << "Success after bootstrapping (round 1)\n";
@@ -1117,7 +1114,6 @@ namespace ufo
     bool checkCHC (HornRuleExt& hr, map<int, ExprVector>& annotations)
     {
       m_smt_solver.reset();
-      outs() << "hr.body: " << *hr.body << "\n";
       m_smt_solver.assertExpr (hr.body);
 
       if (!hr.isFact)
@@ -1129,7 +1125,7 @@ namespace ufo
         for (auto a : lms)
         {
           for (auto & v : invarVars[ind]) a = replaceAll(a, v.second, hr.srcVars[v.first]);
-          outs() << "Annotation: " << *a << "\n";
+          /* outs() << "Annotation: " << *a << "\n"; */
           if (isOpX<FORALL>(a))
           {
             ExprVector varz;
@@ -1156,15 +1152,25 @@ namespace ufo
         for (auto a : lms)
         {
           for (auto & v : invarVars[ind]) a = replaceAll(a, v.second, hr.dstVars[v.first]);
-          outs() << "Annotation: " << *a << "\nNegated: " << *mkNeg(a) << "\n";
+          /* outs() << "Annotation: " << *a << "\nNegated: " << *mkNeg(a) << "\n"; */
           negged.insert(mkNeg(a));
         }
         m_smt_solver.assertExpr(disjoin(negged, m_efac));
       }
-      m_smt_solver.toSmtLib(outs());
-      bool out = m_smt_solver.solve ();
-      outs() << (out ? "SAT" : "UNSAT" ) << "\n";
-      return !out;
+      /* m_smt_solver.toSmtLib(outs()); */
+      boost::tribool b = m_smt_solver.solve ();
+      /*
+      if (b) {
+        outs() << "SAT\n";
+      } else if (!b) {
+        outs() << "UNSAT\n";
+      } else {
+        outs() << "unknown\n";
+      }
+      */
+      // Tribool can be false (0), true (1) or indeterminate (2)
+      // Consider any indeterminate answer to be equivalent to true
+      return !b;
     }
 
     void initArrayStuff(BndExpl& bnd, int cycleNum, Expr pref)
