@@ -1000,16 +1000,39 @@ namespace ufo
 
     bool bootstrap()
     {
+      /* // add array candidates */
+      /* if (ruleManager.hasArrays) */
+      /* { */
+      /*   for (auto & dcl: ruleManager.wtoDecls) */
+      /*   { */
+      /*     int i = getVarIndex(dcl, decls); */
+      /*     SamplFactory& sf = sfs[i].back(); */
+      /*     for (auto & c : arrCands[i]) */
+      /*     { */
+      /*       Expr cand = sf.af.getSimplCand(c); */
+      /*       /1* outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n"; *1/ */
+      /*       addCandidate(i, cand); */
+      /*     } */
+      /*   } */
+      /* } */
+      /* // end add array candidates */
+
       filterUnsat();
-      /* outs() << "Filtered UNSAT candidates\n"; */
 
       if (multiHoudini(ruleManager.wtoCHCs))
       {
         assignPrioritiesForLearned();
-        /* outs() << "Checking lemmas (round 0)\n"; */
+
+/*         for (auto & dcl: ruleManager.wtoDecls) */
+/*         { */
+/*           int i = getVarIndex(dcl, decls); */
+/*           SamplFactory& sf = sfs[i].back(); */
+/*           generalizeArrInvars(sf); */
+/*         } */
+
         if (checkAllLemmas())
         {
-          outs () << "Success after bootstrapping (round 0)\n";
+          outs () << "Success after bootstrapping\n";
           return true;
         }
       }
@@ -1026,17 +1049,16 @@ namespace ufo
           {
             checked.clear();
             Expr cand = sf.af.getSimplCand(c);
-            /* outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n"; */
+            // outs () << " - - - bootstrapped cand for " << i << ": " << *cand << "\n";
 
             if (!addCandidate(i, cand)) continue;
             if (checkCand(i))
             {
               assignPrioritiesForLearned();
               generalizeArrInvars(sf);
-              /* outs() << "Checking lemmas (round 1)\n"; */
               if (checkAllLemmas())
               {
-                outs () << "Success after bootstrapping (round 1)\n";
+                outs () << "Success after bootstrapping\n";
                 return true;
               }
             }
@@ -1068,10 +1090,9 @@ namespace ufo
         if (multiHoudini(ruleManager.wtoCHCs))
         {
           assignPrioritiesForLearned();
-          /* outs() << "Checking lemmas (round 2)\n"; */
           if (checkAllLemmas())
           {
-            outs () << "Success after bootstrapping (round 2)\n";
+            outs () << "Success after bootstrapping\n";
             return true;
           }
         }
