@@ -5,6 +5,8 @@
 #include "CandChecker.hpp"
 #include "ae/SMTUtils.hpp"
 
+/* Template for P6 */
+
 using namespace std;
 using namespace boost;
 namespace ufo

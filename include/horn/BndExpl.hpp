@@ -2,7 +2,7 @@
 #define BNDEXPL__HPP__
 
 #include "Horn.hpp"
-#include "ae/AeValSolver.hpp"
+#include "ae/SMTUtils.hpp"
 
 using namespace std;
 using namespace boost;
@@ -13,6 +13,7 @@ namespace ufo
     private:
 
     ExprFactory &m_efac;
+    SMTUtils u;
     CHCs& ruleManager;
     // TODO: possibly other fields...
 
@@ -43,6 +44,7 @@ namespace ufo
       CHCs ruleManager(m_efac, z3);
       ruleManager.parse(smt);
       // TODO: Initialize the class with the CHCs
+      // TODO: check that the form of the CHCs is valid
       // TODO: Explore the possible traces between the two bounds
       // TODO: report something? (might need to change the return type)
     }
